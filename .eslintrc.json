@@ -1,8 +1,8 @@
 {
 	"env": {
-		"browser": true,
-		"commonjs": true,
-		"es6": true
+		"node": true,
+		"es2022": true,
+		"browser": true
 	},
 	"extends": "eslint:recommended",
 	"globals": {
@@ -10,8 +10,9 @@
 		"SharedArrayBuffer": "readonly"
 	},
 	"parserOptions": {
-		"ecmaVersion": 2018
-	},
+		"ecmaVersion": "latest",
+		"sourceType": "module"
+	  },
 	"rules": {
 	}
 }

@@ -1,10 +1,10 @@
-const camelcase = require('camelcase');
-const commander = require('commander');
-const fs = require('fs');
-const inquirer = require('inquirer');
-const path = require('path');
+import camelcase from 'camelcase';
+import commander from 'commander';
+import * as fs from 'fs';
+import inquirer from 'inquirer';
+import * as path from 'path';
 
-const package = require('../package.json');
+import packagejson from '../package.json' assert { type: 'json' };
 
 // all user options for command line and wizard are declared here
 const options = [
@@ -32,21 +32,21 @@ const options = [
 		aliases: ['yearfolders', 'yearmonthfolders'],
 		type: 'boolean',
 		description: 'Create year folders',
-		default: false
+		default: true
 	},
 	{
 		name: 'month-folders',
 		aliases: ['yearmonthfolders'],
 		type: 'boolean',
 		description: 'Create month folders',
-		default: false
+		default: true
 	},
 	{
 		name: 'post-folders',
 		aliases: ['postfolders'],
 		type: 'boolean',
 		description: 'Create a folder for each post',
-		default: true
+		default: false
 	},
 	{
 		name: 'prefix-date',
@@ -60,14 +60,14 @@ const options = [
 		aliases: ['saveimages'],
 		type: 'boolean',
 		description: 'Save images attached to posts',
-		default: true
+		default: false
 	},
 	{
 		name: 'save-scraped-images',
 		aliases: ['addcontentimages'],
 		type: 'boolean',
 		description: 'Save images scraped from post body content',
-		default: true
+		default: false
 	},
 	{
 		name: 'include-other-types',
@@ -158,9 +158,10 @@ function replaceAliases(argv) {
 
 function parseCommandLine(argv) {
 	// setup for help output
+	console.log(packagejson.version);
 	commander
 		.name('node index.js')
-		.version('v' + package.version, '-v, --version', 'Display version number')
+		.version('v' + packagejson.version.toString(), '-v, --version', 'Display version number')
 		.helpOption('-h, --help', 'See the thing you\'re looking at right now')
 		.on('--help', () => {
 			console.log('\nMore documentation is at https://github.com/lonekorean/wordpress-export-to-markdown');
@@ -199,4 +200,4 @@ function validateFile(value) {
 	return isValid ? true : 'Unable to find file: ' + path.resolve(value);
 }
 
-exports.getConfig = getConfig;
+export { getConfig };

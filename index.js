@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-const compareVersions = require('compare-versions');
-const path = require('path');
-const process = require('process');
+import compareVersions from 'compare-versions';
+import path from 'path';
+import process from 'process';
 
-const wizard = require('./src/wizard');
-const parser = require('./src/parser');
-const writer = require('./src/writer');
+import { getConfig } from './src/wizard.js';
+import { parseFilePromise } from './src/parser.js';
+import { writeFilesPromise } from './src/writer.js';
 
 (async () => {
 	// Node version check
@@ -17,13 +17,13 @@ const writer = require('./src/writer');
 	}
 
 	// parse any command line arguments and run wizard
-	const config = await wizard.getConfig(process.argv);
+	const config = await getConfig(process.argv);
 
 	// parse data from XML and do Markdown translations
-	const posts = await parser.parseFilePromise(config)
+	const posts = await parseFilePromise(config)
 
 	// write files, downloading images as needed
-	await writer.writeFilesPromise(posts, config);
+	await writeFilesPromise(posts, config);
 
 	// happy goodbye
 	console.log('\nAll done!');

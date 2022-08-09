@@ -1,10 +1,10 @@
-const fs = require('fs');
-const luxon = require('luxon');
-const xml2js = require('xml2js');
+import * as fs from 'fs';
+import * as luxon from 'luxon';
+import * as xml2js from 'xml2js';
 
-const shared = require('./shared');
-const settings = require('./settings');
-const translator = require('./translator');
+import * as shared from './shared.js';
+import settings from './settings.js';
+import * as translator from './translator.js';
 
 async function parseFilePromise(config) {
 	console.log('\nParsing...');
@@ -202,4 +202,4 @@ function mergeImagesIntoPosts(images, posts) {
 	});
 }
 
-exports.parseFilePromise = parseFilePromise;
+export { parseFilePromise };
