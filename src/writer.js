@@ -54,7 +54,7 @@ async function writeMarkdownFilesPromise(posts, config ) {
 		} else {
 			const payload = {
 				item: post,
-				name: (config.includeOtherTypes ? post.meta.type + ' - ' : '') + post.meta.slug,
+				name: (config.includeOtherTypes ? post.frontmatter.type + ' - ' : '') + post.frontmatter.slug,
 				destinationPath,
 				delay
 			};
@@ -104,7 +104,7 @@ async function writeImageFilesPromise(posts, config) {
 	const payloads = posts.flatMap(post => {
 		const postPath = getPostPath(post, config);
 		const imagesDir = path.join(path.dirname(postPath), 'images');
-		return post.meta.imageUrls.flatMap(imageUrl => {
+		return post.frontmatter.imageUrls.flatMap(imageUrl => {
 			const filename = shared.getFilenameFromUrl(imageUrl);
 			const destinationPath = path.join(imagesDir, filename);
 			if (checkFile(destinationPath)) {
@@ -164,7 +164,7 @@ function getPostPath(post, config) {
 
 	// create segment for post type if we're dealing with more than just "post"
 	if (config.includeOtherTypes) {
-		pathSegments.push(post.meta.type);
+		pathSegments.push(post.frontmatter.type);
 	}
 
 	if (config.yearFolders) {
@@ -176,7 +176,7 @@ function getPostPath(post, config) {
 	}
 
 	// create slug fragment, possibly date prefixed
-	let slugFragment = post.meta.slug;
+	let slugFragment = post.frontmatter.slug;
 	if (config.prefixDate) {
 		slugFragment = dt.toFormat('yyyy-LL-dd') + '-' + slugFragment;
 	}

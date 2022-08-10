@@ -1,10 +1,11 @@
 import * as fs from 'fs';
 import * as luxon from 'luxon';
 import * as xml2js from 'xml2js';
+import { decode } from 'html-entities';
 
-import * as shared from './shared.js';
+import { getFilenameFromUrl } from './shared.js';
 import settings from './settings.js';
-import * as translator from './translator.js';
+import { createTurndownTransformService, getPostContent } from './translator.js';
 
 async function parseFilePromise(config) {
 	console.log('\nParsing...');
@@ -48,30 +49,27 @@ function getItemsOfType(data, type) {
 	return data.rss.channel[0].item.filter(item => item.post_type[0] === type);
 }
 
-function collectPosts(data, postTypes, config) {
-	// this is passed into getPostContent() for the markdown conversion
-	const turndownService = translator.initTurndownService();
+async function collectPosts(data, postTypes, config) {
+	const transformService = createTurndownTransformService();
 
 	let allPosts = [];
 	postTypes.forEach(postType => {
 		const postsForType = getItemsOfType(data, postType)
 			.filter(post => post.status[0] !== 'trash' && post.status[0] !== 'draft')
 			.map(post => ({
-				// meta data isn't written to file, but is used to help with other things
-				meta: {
+				frontmatter: {
 					id: getPostId(post),
 					slug: getPostSlug(post),
-					coverImageId: getPostCoverImageId(post),
-					type: postType,
-					imageUrls: []
-				},
-				frontmatter: {
 					title: getPostTitle(post),
 					date: getPostDate(post),
+					type: postType,
 					categories: getCategories(post),
-					tags: getTags(post)
+					tags: getTags(post),
+					coverImageId: getPostCoverImageId(post),
+					imageUrls: [],
+					excerpt: getPostExcert(post),
 				},
-				content: translator.getPostContent(post, turndownService, config)
+				content: getPostContent(post, content => transformService.turndown(content), config)
 			}));
 
 		if (postTypes.length > 1) {
@@ -106,7 +104,7 @@ function getPostCoverImageId(post) {
 }
 
 function getPostTitle(post) {
-	return post.title[0];
+	return decode(post.title[0]);
 }
 
 function getPostDate(post) {
@@ -128,6 +126,10 @@ function getCategories(post) {
 
 function getTags(post) {
 	return processCategoryTags(post, 'post_tag');
+}
+
+function getPostExcert(post) {
+	return decode(post.encoded[1]);
 }
 
 function processCategoryTags(post, domain) {
@@ -185,18 +187,18 @@ function mergeImagesIntoPosts(images, posts) {
 			let shouldAttach = false;
 
 			// this image was uploaded as an attachment to this post
-			if (image.postId === post.meta.id) {
+			if (image.postId === post.frontmatter.id) {
 				shouldAttach = true;
 			}
 
 			// this image was set as the featured image for this post
-			if (image.id === post.meta.coverImageId) {
+			if (image.id === post.frontmatter.coverImageId) {
 				shouldAttach = true;
-				post.frontmatter.coverImage = shared.getFilenameFromUrl(image.url);
+				post.frontmatter.coverImage = getFilenameFromUrl(image.url);
 			}
 
-			if (shouldAttach && !post.meta.imageUrls.includes(image.url)) {
-				post.meta.imageUrls.push(image.url);
+			if (shouldAttach && !post.frontmatter.imageUrls.includes(image.url)) {
+				post.frontmatter.imageUrls.push(image.url);
 			}
 		});
 	});

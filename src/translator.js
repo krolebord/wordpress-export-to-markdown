@@ -1,10 +1,11 @@
 import turndown from 'turndown';
 import * as turndownPluginGfm from 'turndown-plugin-gfm';
+import {encode,decode} from 'html-entities';
+import {HTMLElement, parse} from 'node-html-parser';
 
-function initTurndownService() {
+function createTurndownTransformService() {
 	const turndownService = new turndown({
 		headingStyle: 'atx',
-		bulletListMarker: '-',
 		codeBlockStyle: 'fenced'
 	});
 
@@ -56,13 +57,28 @@ function initTurndownService() {
 	return turndownService;
 }
 
-function getPostContent(post, turndownService, config) {
+function getPostContent(post, transform, config) {
 	let content = post.encoded[0];
 
-	// insert an empty div element between double line breaks
-	// this nifty trick causes turndown to keep adjacent paragraphs separated
-	// without mucking up content inside of other elemnts (like <code> blocks)
-	content = content.replace(/(\r?\n){2}/g, '\n<div></div>\n');
+	const root = parse(content);
+
+	// add code tags to pre elements
+	root.getElementsByTagName('pre').forEach(pre => {
+		// remove existing code tags from innerHTML
+		pre.innerHTML = pre.innerHTML.replace(/<code>/g, '').replace(/<\/code>/g, '');
+
+		const codeNode = new HTMLElement('code', {}, '');
+		codeNode.innerHTML = pre.innerHTML;
+		pre.innerHTML = '';
+		pre.appendChild(codeNode);
+	});
+
+	// encode all html inside <code> tags
+	root.querySelectorAll('code').forEach(code => {
+		code.innerHTML = encode(decode(code.innerHTML));
+	});
+
+	content = root.toString();
 
 	if (config.saveScrapedImages) {
 		// writeImageFile() will save all content images to a relative /images
@@ -76,7 +92,10 @@ function getPostContent(post, turndownService, config) {
 	content = content.replace(/(<\/iframe>)/gi, '.$1');
 
 	// use turndown to convert HTML to Markdown
-	content = turndownService.turndown(content);
+	content = transform(content);
+
+	// decode all html inside markdown ``` code blocks
+	content = content.replace(/```\n*?((.|\n)+?)\n*?```/gi, (match, code) => `\`\`\`${decode(code)}\n\`\`\``);
 
 	// clean up extra spaces in list items
 	content = content.replace(/(-|\d+\.) +/g, '$1 ');
@@ -87,4 +106,4 @@ function getPostContent(post, turndownService, config) {
 	return content;
 }
 
-export { initTurndownService, getPostContent };
+export { createTurndownTransformService, getPostContent };
