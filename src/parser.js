@@ -5,7 +5,7 @@ import { decode } from 'html-entities';
 
 import { getFilenameFromUrl } from './shared.js';
 import settings from './settings.js';
-import { createTurndownTransformService, getPostContent } from './translator.js';
+import { createTurndownTransformService, parseMarkwondContent } from './translator.js';
 
 async function parseFilePromise(config) {
 	console.log('\nParsing...');
@@ -17,6 +17,7 @@ async function parseFilePromise(config) {
 
 	const postTypes = getPostTypes(data, config);
 	const posts = collectPosts(data, postTypes, config);
+	const authors = collectAuthors(data, config);
 
 	const images = [];
 	if (config.saveAttachedImages) {
@@ -28,7 +29,7 @@ async function parseFilePromise(config) {
 
 	mergeImagesIntoPosts(images, posts);
 
-	return posts;
+	return [posts, authors];
 }
 
 function getPostTypes(data, config) {
@@ -49,7 +50,7 @@ function getItemsOfType(data, type) {
 	return data.rss.channel[0].item.filter(item => item.post_type[0] === type);
 }
 
-async function collectPosts(data, postTypes, config) {
+function collectPosts(data, postTypes, config) {
 	const transformService = createTurndownTransformService();
 
 	let allPosts = [];
@@ -63,13 +64,14 @@ async function collectPosts(data, postTypes, config) {
 					title: getPostTitle(post),
 					date: getPostDate(post),
 					type: postType,
-					categories: getCategories(post),
+					category: getCategory(post),
 					tags: getTags(post),
+					author: getAuthor(post),
 					coverImageId: getPostCoverImageId(post),
 					imageUrls: [],
-					excerpt: getPostExcert(post),
+					excerpt: parseMarkwondContent(post.encoded[1], content => transformService.turndown(content), config),
 				},
-				content: getPostContent(post, content => transformService.turndown(content), config)
+				content: parseMarkwondContent(post.encoded[0], content => transformService.turndown(content), config)
 			}));
 
 		if (postTypes.length > 1) {
@@ -84,6 +86,15 @@ async function collectPosts(data, postTypes, config) {
 	}
 	return allPosts;
 }
+
+function collectAuthors(data, config) {
+	return data.rss.channel[0].author.map(author => ({
+		login: author.author_login[0],
+		firstName: author.author_first_name[0],
+		lastName: author.author_last_name[0],
+		email: author.author_email[0],
+	}));
+} 
 
 function getPostId(post) {
 	return post.post_id[0];
@@ -119,17 +130,17 @@ function getPostDate(post) {
 	}
 }
 
-function getCategories(post) {
+function getCategory(post) {
 	const categories = processCategoryTags(post, 'category');
-	return categories.filter(category => !settings.filter_categories.includes(category));
+	return categories.filter(category => !settings.filter_categories.includes(category))[0];
 }
 
 function getTags(post) {
 	return processCategoryTags(post, 'post_tag');
 }
 
-function getPostExcert(post) {
-	return decode(post.encoded[1]);
+function getAuthor(post) {
+	return processCategoryTagValues(post, 'author')[0];
 }
 
 function processCategoryTags(post, domain) {
@@ -140,6 +151,16 @@ function processCategoryTags(post, domain) {
 	return post.category
 		.filter(category => category.$.domain === domain)
 		.map(({ $: attributes }) => decodeURIComponent(attributes.nicename));
+}
+
+function processCategoryTagValues(post, domain) {
+	if (!post.category) {
+		return [];
+	}
+
+	return post.category
+		.filter(category => category.$.domain === domain)
+		.map(({_}) => _);
 }
 
 function collectAttachedImages(data) {

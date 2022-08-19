@@ -5,4 +5,5 @@ tmp/
 
 #ignore specific filenames
 export.xml
+positions.json
 .DS_Store

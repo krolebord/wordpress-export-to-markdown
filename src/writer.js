@@ -2,14 +2,16 @@ import chalk from 'chalk';
 import * as fs from 'fs';
 import * as luxon from 'luxon';
 import * as path from 'path';
-import * as requestPromiseNative from 'request-promise-native';
+import requestPromiseNative from 'request-promise-native';
 
 import * as shared from './shared.js';
-import * as settings from './settings.js';
+import settings from './settings.js';
 
-async function writeFilesPromise(posts, config) {
+async function writeFilesPromise(posts, authors, positions, config) {
 	await writeMarkdownFilesPromise(posts, config);
 	await writeImageFilesPromise(posts, config);
+	await writePostsJsonPromise(1, posts, config);
+	await writeAuthorsJsonPromise(1, authors, posts, positions, config);
 }
 
 async function processPayloadsPromise(payloads, loadFunc) {
@@ -41,7 +43,7 @@ async function writeFile(destinationPath, data) {
 	await fs.promises.writeFile(destinationPath, data);
 }
 
-async function writeMarkdownFilesPromise(posts, config ) {
+async function writeMarkdownFilesPromise(posts, config) {
 	// package up posts into payloads
 	let skipCount = 0;
 	let delay = 0;
@@ -70,6 +72,56 @@ async function writeMarkdownFilesPromise(posts, config ) {
 		console.log(`\nSaving ${remainingCount} posts (${skipCount} already exist)...`);
 		await processPayloadsPromise(payloads, loadMarkdownFilePromise);
 	}
+}
+
+async function writeAuthorsJsonPromise(startId, authors, posts, positions, config) {
+	const postIds = posts
+		.filter(post => !!post.frontmatter.author)
+		.map((post, i) => [post.frontmatter.author, i + startId])
+		.reduce((map, [author, id]) => {
+			const posts = map.get(author) || [];
+			posts.push(id);
+			map.set(author, posts);
+			return map;
+		} , new Map());
+
+	const position = new Map(positions.map(({email, position}) => ([email, position])));
+
+	const data = authors.map((author, i) => ({
+		id: i + startId,
+		firstName: author.firstName,
+		lastName: author.lastName,
+		createdAt: "2022-08-11T12:07:49.237Z",
+		updatedAt: "2022-08-11T12:08:49.422Z",
+		email: author.email,
+		photo: null,
+		position: position.get(author.email) || null,
+		posts: postIds.get(author.login) || [],
+	}));
+	const dataPath = config.output + '/data/authors.json';
+	console.log('\nWriting ' + dataPath);
+	await writeFile(dataPath, JSON.stringify(data, null, 2));
+	console.log('Saved authors JSON file.');
+}
+
+async function writePostsJsonPromise(startId, posts, config) {
+	const data = posts.map((post, i) => ({
+		id: i + startId,
+		title: post.frontmatter.title,
+		slug: post.frontmatter.slug,
+		content: post.content,
+		date: luxon.DateTime.fromISO(post.frontmatter.date).toUTC().toISO(),
+		updatedAt: luxon.DateTime.fromISO(post.frontmatter.date).toUTC().toISO(),
+		publishedAt: luxon.DateTime.fromISO(post.frontmatter.date).toUTC().toISO(),
+		publishDate: luxon.DateTime.fromISO(post.frontmatter.date).toUTC().toISO(),
+		excerpt: post.frontmatter.excerpt,
+		coverImage: post.frontmatter.coverImage ? post.frontmatter.coverImage : null,
+		category: settings.category_ids.get(post.frontmatter.category),
+	}));
+	const dataPath = config.output + '/data/posts.json';
+	console.log('\nWriting ' + dataPath);
+	await writeFile(dataPath, JSON.stringify(data, null, 2));
+	console.log('Saved posts JSON file.');
 }
 
 async function loadMarkdownFilePromise(post) {
@@ -103,7 +155,7 @@ async function writeImageFilesPromise(posts, config) {
 	let delay = 0;
 	const payloads = posts.flatMap(post => {
 		const postPath = getPostPath(post, config);
-		const imagesDir = path.join(path.dirname(postPath), 'images');
+		const imagesDir = path.dirname(postPath);
 		return post.frontmatter.imageUrls.flatMap(imageUrl => {
 			const filename = shared.getFilenameFromUrl(imageUrl);
 			const destinationPath = path.join(imagesDir, filename);

@@ -46,7 +46,7 @@ const options = [
 		aliases: ['postfolders'],
 		type: 'boolean',
 		description: 'Create a folder for each post',
-		default: false
+		default: true
 	},
 	{
 		name: 'prefix-date',
@@ -60,21 +60,27 @@ const options = [
 		aliases: ['saveimages'],
 		type: 'boolean',
 		description: 'Save images attached to posts',
-		default: false
+		default: true
 	},
 	{
 		name: 'save-scraped-images',
 		aliases: ['addcontentimages'],
 		type: 'boolean',
 		description: 'Save images scraped from post body content',
-		default: false
+		default: true
 	},
 	{
 		name: 'include-other-types',
 		type: 'boolean',
 		description: 'Include custom post types and pages',
 		default: false
-	}
+	},
+	{
+		name: 'positions',
+		type: 'file',
+		description: 'Path to positions JSON export file',
+		default: 'positions.json'
+	},
 ];
 
 async function getConfig(argv) {
@@ -158,7 +164,6 @@ function replaceAliases(argv) {
 
 function parseCommandLine(argv) {
 	// setup for help output
-	console.log(packagejson.version);
 	commander
 		.name('node index.js')
 		.version('v' + packagejson.version.toString(), '-v, --version', 'Display version number')

@@ -57,9 +57,7 @@ function createTurndownTransformService() {
 	return turndownService;
 }
 
-function getPostContent(post, transform, config) {
-	let content = post.encoded[0];
-
+function parseMarkwondContent(content, transform, config) {
 	const root = parse(content);
 
 	// add code tags to pre elements
@@ -106,4 +104,4 @@ function getPostContent(post, transform, config) {
 	return content;
 }
 
-export { createTurndownTransformService, getPostContent };
+export { createTurndownTransformService, parseMarkwondContent };

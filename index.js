@@ -3,6 +3,7 @@
 import compareVersions from 'compare-versions';
 import path from 'path';
 import process from 'process';
+import fs from 'fs';
 
 import { getConfig } from './src/wizard.js';
 import { parseFilePromise } from './src/parser.js';
@@ -20,10 +21,13 @@ import { writeFilesPromise } from './src/writer.js';
 	const config = await getConfig(process.argv);
 
 	// parse data from XML and do Markdown translations
-	const posts = await parseFilePromise(config)
+	const [posts, authors] = await parseFilePromise(config);
+
+	const positions = JSON.parse(await fs.promises.readFile(config.positions));
+	console.log(positions);
 
 	// write files, downloading images as needed
-	await writeFilesPromise(posts, config);
+	await writeFilesPromise(posts, authors, positions, config);
 
 	// happy goodbye
 	console.log('\nAll done!');
